@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Тюнер" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <title>Оркестровый тюнер</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main id="stage" class="stage state-idle">
+    <!-- Стартовый экран (требуется тап для запуска AudioContext на iOS/Android) -->
+    <button id="startOverlay" class="start-overlay" type="button">
+      <div class="mic-ring">
+        <svg viewBox="0 0 24 24" class="mic-icon" aria-hidden="true">
+          <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V20h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0Z"/>
+        </svg>
+      </div>
+      <span class="start-label">Нажмите, чтобы начать</span>
+    </button>
+
+    <!-- Центральная область тюнера (минимум визуального шума) -->
+    <section class="tuner-core" aria-live="polite">
+      <!-- Стрелка сверху (указывает вниз, когда звук ВЫСИТ) -->
+      <div id="arrowDown" class="arrow arrow-top" aria-hidden="true">
+        <svg viewBox="0 0 48 48">
+          <path d="M24 8v28M12 25l12 12 12-12" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+
+      <!-- Нота + знак альтерации + цифра октавы -->
+      <div class="note-display">
+        <span id="noteName" class="note-letter">—</span>
+        <span class="note-modifiers">
+          <span id="noteAccidental" class="note-accidental"></span>
+          <span id="noteOctave" class="note-octave"></span>
+        </span>
+      </div>
+
+      <!-- Стрелка снизу (указывает вверх, когда звук НИЗИТ) -->
+      <div id="arrowUp" class="arrow arrow-bottom" aria-hidden="true">
+        <svg viewBox="0 0 48 48">
+          <path d="M24 40V12M12 23l12-12 12 12" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Нижняя капсула в стиле Apple Frosted Glass -->
+    <button id="openSettingsBtn" class="pill-btn" type="button">
+      <span id="pillLabel">Хроматический · 442 Гц</span>
+    </button>
+  </main>
+
+  <!-- iOS-шторка настроек -->
+  <div id="sheetBackdrop" class="sheet-backdrop" hidden></div>
+  <aside id="settingsSheet" class="sheet" aria-hidden="true">
+    <div class="sheet-handle"></div>
+    <header class="sheet-header">
+      <h2>Настройки</h2>
+      <button id="closeSettingsBtn" class="sheet-done" type="button">Готово</button>
+    </header>
+
+    <div class="sheet-content">
+      <!-- Камертон (эталонный звук) -->
+      <div class="group-title">Камертон</div>
+      <div class="card tone-card">
+        <button class="tone-btn" data-midi="69" type="button">A₄</button>
+        <button class="tone-btn" data-midi="70" type="button">B♭₄</button>
+        <button class="tone-btn" data-midi="60" type="button">C₄</button>
+        <button class="tone-btn" data-midi="65" type="button">F₄</button>
+      </div>
+
+      <!-- Строй оркестра (A4) -->
+      <div class="group-title">Эталон A₄</div>
+      <div class="card">
+        <div class="row">
+          <span>Частота</span>
+          <div class="stepper">
+            <button id="a4Minus" type="button" aria-label="Уменьшить">−</button>
+            <span id="a4Value" class="stepper-val">442.0 Гц</span>
+            <button id="a4Plus" type="button" aria-label="Увеличить">+</button>
+          </div>
+        </div>
+        <div class="row presets-row">
+          <button class="chip" data-a4="415" type="button">415</button>
+          <button class="chip" data-a4="440" type="button">440</button>
+          <button class="chip" data-a4="442" type="button">442</button>
+          <button class="chip" data-a4="443" type="button">443</button>
+        </div>
+      </div>
+
+      <!-- Точность зелёного экрана -->
+      <div class="group-title">Допуск зелёного экрана</div>
+      <div class="card segmented-card">
+        <button class="seg-btn" data-tol="4" type="button">Сцена</button>
+        <button class="seg-btn" data-tol="2" type="button">Оркестр</button>
+        <button class="seg-btn" data-tol="1" type="button">Студия</button>
+      </div>
+
+      <!-- Знаки альтерации -->
+      <div class="group-title">Отображение знаков</div>
+      <div class="card segmented-card">
+        <button class="seg-btn" data-acc="auto" type="button">Авто</button>
+        <button class="seg-btn" data-acc="flat" type="button">Бемоли (♭)</button>
+        <button class="seg-btn" data-acc="sharp" type="button">Диезы (♯)</button>
+      </div>
+
+      <!-- Группы оркестровых инструментов -->
+      <div id="instrumentGroups"></div>
+    </div>
+  </aside>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
