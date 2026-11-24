@@ -15,10 +15,12 @@
 </head>
 <body>
   <main id="stage" class="stage state-idle">
-    <!-- Фирменная плавная дуга фона (реагирует на отклонение) -->
-    <div id="bgCurve" class="bg-curve" aria-hidden="true"></div>
+    <!-- Симметрично колеблющаяся SVG-дуга фона -->
+    <svg id="bgCurveSvg" class="bg-curve-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <path id="bgCurvePath" d="M 50 0 Q 50 50 50 100 L 100 100 L 100 0 Z" />
+    </svg>
 
-    <!-- Стартовый экран (светлый Apple стиль) -->
+    <!-- Стартовый экран -->
     <button id="startOverlay" class="start-overlay" type="button">
       <div class="glass-circle start-mic-circle">
         <svg viewBox="0 0 24 24" class="mic-icon" aria-hidden="true">
@@ -28,12 +30,12 @@
       <span class="start-label">Нажмите, чтобы включить микрофон</span>
     </button>
 
-    <!-- Верхняя строка: эталон и выбранный инструмент -->
+    <!-- Верхняя строка -->
     <button id="topMetaBtn" class="top-meta" type="button">
       <span id="topMetaLabel">442 Hz</span>
     </button>
 
-    <!-- Центральная зона: нота + шкала -50..0..+50 -->
+    <!-- Центральная зона тюнера -->
     <section class="tuner-core" aria-live="polite">
       <div class="note-display">
         <span id="noteName" class="note-letter">—</span>
@@ -43,10 +45,8 @@
         </span>
       </div>
 
-      <!-- Подсказка направления (Ниже / Выше / В ноте) -->
       <div id="directionCue" class="direction-cue"></div>
 
-      <!-- Точечная шкала -50 .. -25 .. 0 .. 25 .. 50 -->
       <div class="scale-wrap" aria-hidden="true">
         <div id="dotTrack" class="dot-track">
           <div id="pitchMarker" class="pitch-marker"></div>
@@ -60,8 +60,8 @@
       </div>
     </section>
 
-    <!-- Кнопка настроек в стиле Liquid Glass (без камертона) -->
-    <button id="openSettingsBtn" class="glass-btn settings-trigger" type="button" aria-label="Настройки">
+    <!-- Кнопка настроек (без камертона) -->
+    <button id="openSettingsBtn" class="glass-btn" type="button" aria-label="Настройки">
       <svg viewBox="0 0 24 24" class="sliders-icon" aria-hidden="true">
         <line x1="4" y1="8" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
         <circle cx="9" cy="8" r="2.3" fill="currentColor"/>
@@ -71,12 +71,11 @@
     </button>
   </main>
 
-  <!-- Настройки в стиле Apple Liquid Glass -->
+  <!-- Меню: Liquid Glass + читаемость Material Design -->
   <div id="glassModal" class="glass-modal" aria-hidden="true">
     <div id="glassBackdrop" class="glass-backdrop"></div>
 
     <div class="glass-layout">
-      <!-- Верхняя панель с кнопкой закрытия (как ✕ на скрине) -->
       <div class="glass-topbar">
         <button id="closeSettingsBtn" class="glass-circle close-glass-btn" type="button" aria-label="Закрыть">
           <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
@@ -85,48 +84,43 @@
         </button>
       </div>
 
-      <!-- Главная капсула Liquid Glass -->
       <aside class="liquid-glass-panel">
         <div class="glass-scroll">
-          <!-- Калибровка частоты A4 -->
           <div class="glass-section">
             <div class="glass-section-title">Частота A₄</div>
-            <div class="glass-box">
+            <div class="material-card">
               <div class="freq-stepper">
-                <button id="a4Minus" class="glass-pill-btn" type="button">−</button>
+                <button id="a4Minus" class="m-icon-btn" type="button">−</button>
                 <span id="a4Value" class="freq-value">442.0 Hz</span>
-                <button id="a4Plus" class="glass-pill-btn" type="button">+</button>
+                <button id="a4Plus" class="m-icon-btn" type="button">+</button>
               </div>
               <div class="freq-presets">
-                <button class="lens-chip" data-a4="415" type="button">415</button>
-                <button class="lens-chip" data-a4="440" type="button">440</button>
-                <button class="lens-chip" data-a4="442" type="button">442</button>
-                <button class="lens-chip" data-a4="443" type="button">443</button>
+                <button class="m-chip" data-a4="415" type="button">415</button>
+                <button class="m-chip" data-a4="440" type="button">440</button>
+                <button class="m-chip" data-a4="442" type="button">442</button>
+                <button class="m-chip" data-a4="443" type="button">443</button>
               </div>
             </div>
           </div>
 
-          <!-- Допуск зелёного экрана -->
           <div class="glass-section">
             <div class="glass-section-title">Допуск зелёного экрана</div>
-            <div class="glass-segmented">
-              <button class="lens-seg" data-tol="4" type="button">Сцена</button>
-              <button class="lens-seg" data-tol="2" type="button">Оркестр</button>
-              <button class="lens-seg" data-tol="1" type="button">Студия</button>
+            <div class="m-segmented">
+              <button class="m-seg" data-tol="4" type="button">Сцена</button>
+              <button class="m-seg" data-tol="2" type="button">Оркестр</button>
+              <button class="m-seg" data-tol="1" type="button">Студия</button>
             </div>
           </div>
 
-          <!-- Отображение знаков -->
           <div class="glass-section">
             <div class="glass-section-title">Знаки альтерации</div>
-            <div class="glass-segmented">
-              <button class="lens-seg" data-acc="auto" type="button">Авто</button>
-              <button class="lens-seg" data-acc="flat" type="button">Бемоли ♭</button>
-              <button class="lens-seg" data-acc="sharp" type="button">Диезы ♯</button>
+            <div class="m-segmented">
+              <button class="m-seg" data-acc="auto" type="button">Авто</button>
+              <button class="m-seg" data-acc="flat" type="button">Бемоли ♭</button>
+              <button class="m-seg" data-acc="sharp" type="button">Диезы ♯</button>
             </div>
           </div>
 
-          <!-- Оркестровые инструменты по группам -->
           <div id="instrumentGroups"></div>
         </div>
       </aside>
