@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orchestra-tuner-v3';
+const CACHE_NAME = 'orchestra-tuner-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -10,7 +10,6 @@ const ASSETS = [
   './icon-512.png'
 ];
 
-// Сбрасываем флаг redirect, иначе iOS Safari может отклонить кэш офлайн
 async function cleanResponse(response) {
   if (!response || !response.redirected) return response;
   const body = await response.arrayBuffer();
@@ -28,12 +27,8 @@ self.addEventListener('install', (event) => {
         ASSETS.map(async (url) => {
           try {
             const res = await fetch(url, { cache: 'reload' });
-            if (res.ok) {
-              await cache.put(url, await cleanResponse(res));
-            }
-          } catch (e) {
-            // Ошибка одного файла не сломает кэширование остальных
-          }
+            if (res.ok) await cache.put(url, await cleanResponse(res));
+          } catch {}
         })
       );
     }).then(() => self.skipWaiting())
@@ -54,7 +49,6 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cached) => {
       if (cached) return cached;
-
       return fetch(event.request).catch(() => {
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
