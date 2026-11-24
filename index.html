@@ -22,11 +22,14 @@
 
     <!-- Стартовый экран -->
     <button id="startOverlay" class="start-overlay" type="button">
-      <div class="glass-circle start-mic-circle">
+      <span class="start-mic-circle">
         <svg viewBox="0 0 24 24" class="mic-icon" aria-hidden="true">
-          <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V20h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0Z"/>
+          <rect x="9" y="2.5" width="6" height="11" rx="3" fill="currentColor"/>
+          <path d="M5.5 11a6.5 6.5 0 0 0 13 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <line x1="12" y1="17.5" x2="12" y2="21.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <line x1="8.5" y1="21.5" x2="15.5" y2="21.5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
         </svg>
-      </div>
+      </span>
       <span class="start-label">Нажмите, чтобы включить микрофон</span>
     </button>
 
@@ -35,7 +38,7 @@
       <span id="topMetaLabel">442 Hz</span>
     </button>
 
-    <!-- Центральная зона тюнера (без слов и стрелок) -->
+    <!-- Центральная зона тюнера -->
     <section class="tuner-core" aria-live="polite">
       <div class="note-display">
         <span id="noteName" class="note-letter">—</span>
@@ -45,8 +48,30 @@
         </span>
       </div>
 
+      <!-- Шкала жёстко в HTML — 21 точка от -50 до +50 -->
       <div class="scale-wrap" aria-hidden="true">
         <div id="dotTrack" class="dot-track">
+          <span class="scale-dot major" style="left: 0%"></span>
+          <span class="scale-dot" style="left: 5%"></span>
+          <span class="scale-dot" style="left: 10%"></span>
+          <span class="scale-dot" style="left: 15%"></span>
+          <span class="scale-dot" style="left: 20%"></span>
+          <span class="scale-dot major" style="left: 25%"></span>
+          <span class="scale-dot" style="left: 30%"></span>
+          <span class="scale-dot" style="left: 35%"></span>
+          <span class="scale-dot" style="left: 40%"></span>
+          <span class="scale-dot" style="left: 45%"></span>
+          <span class="scale-dot center" style="left: 50%"></span>
+          <span class="scale-dot" style="left: 55%"></span>
+          <span class="scale-dot" style="left: 60%"></span>
+          <span class="scale-dot" style="left: 65%"></span>
+          <span class="scale-dot" style="left: 70%"></span>
+          <span class="scale-dot major" style="left: 75%"></span>
+          <span class="scale-dot" style="left: 80%"></span>
+          <span class="scale-dot" style="left: 85%"></span>
+          <span class="scale-dot" style="left: 90%"></span>
+          <span class="scale-dot" style="left: 95%"></span>
+          <span class="scale-dot major" style="left: 100%"></span>
           <div id="pitchMarker" class="pitch-marker"></div>
         </div>
         <div class="scale-labels">
@@ -58,7 +83,7 @@
       </div>
     </section>
 
-    <!-- Кнопка настроек (повышенная читаемость) -->
+    <!-- Кнопка настроек -->
     <button id="openSettingsBtn" class="glass-btn" type="button" aria-label="Настройки">
       <svg viewBox="0 0 24 24" class="sliders-icon" aria-hidden="true">
         <line x1="3.5" y1="8" x2="20.5" y2="8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
@@ -69,7 +94,7 @@
     </button>
   </main>
 
-  <!-- Меню: Liquid Glass + читаемость Material Design -->
+  <!-- Меню: Liquid Glass + Material Design -->
   <div id="glassModal" class="glass-modal" aria-hidden="true">
     <div id="glassBackdrop" class="glass-backdrop"></div>
 
