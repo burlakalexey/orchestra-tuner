@@ -45,21 +45,19 @@ const NOTES_FLAT = [
   ['G', '♭'], ['G', ''], ['A', '♭'], ['A', ''], ['B', '♭'], ['B', '']
 ];
 
-// Состояние с сохранением в localStorage
-const saved = JSON.parse(localStorage.getItem('orchestra_tuner_v1') || '{}');
+const saved = JSON.parse(localStorage.getItem('orchestra_tuner_v2') || '{}');
 const state = {
   instrumentId: saved.instrumentId || 'chromatic',
   a4: saved.a4 || 442,
   tolerance: saved.tolerance || 2,
-  accidentals: saved.accidentals || 'auto', // 'auto' | 'flat' | 'sharp'
+  accidentals: saved.accidentals || 'auto',
   isInTune: false,
   smoothedMidi: null,
-  lastActiveTime: 0,
-  playingToneMidi: null
+  lastActiveTime: 0
 };
 
 function saveState() {
-  localStorage.setItem('orchestra_tuner_v1', JSON.stringify({
+  localStorage.setItem('orchestra_tuner_v2', JSON.stringify({
     instrumentId: state.instrumentId,
     a4: state.a4,
     tolerance: state.tolerance,
@@ -67,30 +65,41 @@ function saveState() {
   }));
 }
 
-// DOM элементы
+// DOM
 const stage = document.getElementById('stage');
+const bgCurve = document.getElementById('bgCurve');
+const themeMeta = document.getElementById('themeColorMeta');
 const startOverlay = document.getElementById('startOverlay');
+const topMetaLabel = document.getElementById('topMetaLabel');
+
 const noteNameEl = document.getElementById('noteName');
 const noteAccEl = document.getElementById('noteAccidental');
 const noteOctEl = document.getElementById('noteOctave');
-const arrowUp = document.getElementById('arrowUp');
-const arrowDown = document.getElementById('arrowDown');
-const pillLabel = document.getElementById('pillLabel');
+const directionCue = document.getElementById('directionCue');
+const dotTrack = document.getElementById('dotTrack');
+const pitchMarker = document.getElementById('pitchMarker');
 
-const sheet = document.getElementById('settingsSheet');
-const backdrop = document.getElementById('sheetBackdrop');
+const glassModal = document.getElementById('glassModal');
+const glassBackdrop = document.getElementById('glassBackdrop');
 const a4ValueEl = document.getElementById('a4Value');
 const groupsContainer = document.getElementById('instrumentGroups');
 
+// Создаём 21 точку шкалы (-50 .. 0 .. +50 с шагом 5 центов)
+for (let i = 0; i <= 20; i++) {
+  const dot = document.createElement('span');
+  dot.className = 'scale-dot';
+  if (i === 10) dot.classList.add('center');
+  else if (i === 0 || i === 5 || i === 15 || i === 20) dot.classList.add('major');
+  dot.style.left = `${(i / 20) * 100}%`;
+  dotTrack.appendChild(dot);
+}
+
 let audioCtx = null;
-let oscNode = null;
-let gainNode = null;
 
 function getInstrument() {
   return ALL_INSTRUMENTS.find((i) => i.id === state.instrumentId) || ALL_INSTRUMENTS[0];
 }
 
-// Инициализация аудио и Wake Lock
 startOverlay.addEventListener('click', async () => {
   try {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -114,7 +123,7 @@ startOverlay.addEventListener('click', async () => {
 
     startOverlay.hidden = true;
     requestWakeLock();
-  } catch (err) {
+  } catch {
     alert('Нужен доступ к микрофону для работы тюнера.');
   }
 });
@@ -126,20 +135,15 @@ async function requestWakeLock() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !startOverlay.hidden === false) {
+  if (document.visibilityState === 'visible' && startOverlay.hidden) {
     requestWakeLock();
   }
 });
 
-// Обработка распознанной частоты
 function handleFrequency(freq) {
-  if (state.playingToneMidi !== null) return; // Не слушаем свой же камертон
-
   const now = performance.now();
   if (!freq) {
-    if (now - state.lastActiveTime > 700) {
-      setIdle();
-    }
+    if (now - state.lastActiveTime > 650) setIdle();
     return;
   }
 
@@ -148,7 +152,6 @@ function handleFrequency(freq) {
   const concertMidi = 69 + 12 * Math.log2(freq / state.a4);
   const writtenMidi = concertMidi + inst.transpose;
 
-  // Мягкое EMA-сглаживание (резкий сброс при смене ноты)
   if (state.smoothedMidi === null || Math.abs(writtenMidi - state.smoothedMidi) > 0.8) {
     state.smoothedMidi = writtenMidi;
   } else {
@@ -158,33 +161,33 @@ function handleFrequency(freq) {
   const nearestMidi = Math.round(state.smoothedMidi);
   const cents = (state.smoothedMidi - nearestMidi) * 100;
 
-  // Гистерезис зелёного экрана (защита от мерцания)
+  // Гистерезис для стабильного зелёного экрана
   const enterTol = state.tolerance;
   const exitTol = state.tolerance * 1.45;
-  const wasInTune = state.isInTune;
-
-  if (!wasInTune && Math.abs(cents) <= enterTol) {
+  if (!state.isInTune && Math.abs(cents) <= enterTol) {
     state.isInTune = true;
     if (navigator.vibrate) navigator.vibrate(14);
-  } else if (wasInTune && Math.abs(cents) > exitTol) {
+  } else if (state.isInTune && Math.abs(cents) > exitTol) {
     state.isInTune = false;
   }
 
-  renderNote(nearestMidi, cents);
+  renderPitch(nearestMidi, cents);
 }
 
 function setIdle() {
   state.isInTune = false;
   state.smoothedMidi = null;
   stage.className = 'stage state-idle';
+  themeMeta.setAttribute('content', '#e5e5ea');
   noteNameEl.textContent = '—';
   noteAccEl.textContent = '';
   noteOctEl.textContent = '';
-  arrowUp.classList.remove('visible');
-  arrowDown.classList.remove('visible');
+  directionCue.textContent = '';
+  pitchMarker.classList.remove('active');
+  bgCurve.style.transform = 'translateX(0)';
 }
 
-function renderNote(midi, cents) {
+function renderPitch(midi, cents) {
   const inst = getInstrument();
   const useFlats = state.accidentals === 'flat' || (state.accidentals === 'auto' && inst.preferFlats);
   const table = useFlats ? NOTES_FLAT : NOTES_SHARP;
@@ -199,74 +202,36 @@ function renderNote(midi, cents) {
 
   stage.classList.remove('state-idle');
 
+  const clamped = Math.max(-50, Math.min(50, cents));
+  const percent = ((clamped + 50) / 100) * 100;
+  pitchMarker.style.left = `${percent}%`;
+  pitchMarker.classList.add('active');
+
   if (state.isInTune) {
     stage.classList.add('in-tune');
-    arrowUp.classList.remove('visible');
-    arrowDown.classList.remove('visible');
+    themeMeta.setAttribute('content', '#30d158');
+    directionCue.textContent = 'В ноте';
   } else {
     stage.classList.remove('in-tune');
-    if (cents < 0) {
-      // Низит -> стрелка снизу вверх (подтянуть)
-      arrowUp.classList.add('visible');
-      arrowDown.classList.remove('visible');
-    } else {
-      // Высит -> стрелка сверху вниз (опустить)
-      arrowDown.classList.add('visible');
-      arrowUp.classList.remove('visible');
-    }
+    themeMeta.setAttribute('content', '#e5e5ea');
+    // Дуга и подсказка показывают сторону отклонения
+    const shiftVw = (clamped / 50) * 18;
+    bgCurve.style.transform = `translateX(${shiftVw}vw)`;
+    directionCue.textContent = cents < 0 ? '← Ниже' : 'Выше →';
   }
 }
 
-// Камертон через OscillatorNode (безопасно для микрофона на iOS)
-function toggleTone(midi, btn) {
-  if (!audioCtx) return;
-  if (audioCtx.state === 'suspended') audioCtx.resume();
-
-  document.querySelectorAll('.tone-btn').forEach((b) => b.classList.remove('active'));
-
-  if (state.playingToneMidi === midi) {
-    stopTone();
-    return;
-  }
-
-  stopTone();
-  state.playingToneMidi = midi;
-  btn.classList.add('active');
-  setIdle();
-
-  const freq = state.a4 * Math.pow(2, (midi - 69) / 12);
-  oscNode = audioCtx.createOscillator();
-  gainNode = audioCtx.createGain();
-  oscNode.type = 'triangle';
-  oscNode.frequency.setValueAtTime(freq, audioCtx.currentTime);
-
-  gainNode.gain.setValueAtTime(0.0001, audioCtx.currentTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.18, audioCtx.currentTime + 0.04);
-
-  oscNode.connect(gainNode);
-  gainNode.connect(audioCtx.destination);
-  oscNode.start();
-}
-
-function stopTone() {
-  state.playingToneMidi = null;
-  if (oscNode && gainNode && audioCtx) {
-    const now = audioCtx.currentTime;
-    gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
-    oscNode.stop(now + 0.05);
-    oscNode = null;
-    gainNode = null;
-  }
-}
-
-// UI Настроек
+// Рендер Liquid Glass настроек
 function renderSettings() {
   const inst = getInstrument();
-  pillLabel.textContent = `${inst.name}${inst.tag !== 'in C' ? ' ' + inst.tag : ''} · ${state.a4.toFixed(1).replace('.0', '')} Гц`;
-  a4ValueEl.textContent = `${state.a4.toFixed(1)} Гц`;
+  const a4Str = state.a4.toFixed(1).replace('.0', '');
+  topMetaLabel.textContent = inst.id === 'chromatic'
+    ? `${a4Str} Hz`
+    : `${a4Str} Hz · ${inst.name}${inst.tag !== 'in C' ? ' ' + inst.tag : ''}`;
 
-  document.querySelectorAll('.chip').forEach((c) => {
+  a4ValueEl.textContent = `${state.a4.toFixed(1)} Hz`;
+
+  document.querySelectorAll('.lens-chip').forEach((c) => {
     c.classList.toggle('active', Number(c.dataset.a4) === state.a4);
   });
   document.querySelectorAll('[data-tol]').forEach((b) => {
@@ -277,14 +242,16 @@ function renderSettings() {
   });
 
   groupsContainer.innerHTML = ORCHESTRA_GROUPS.map((g) => `
-    <div class="group-title">${g.group}</div>
-    <div class="card">
-      ${g.items.map((item) => `
-        <button class="row inst-row" data-inst="${item.id}" type="button">
-          <span>${item.name}<span class="inst-sub">${item.tag}</span></span>
-          ${item.id === state.instrumentId ? '<span class="checkmark">✓</span>' : ''}
-        </button>
-      `).join('')}
+    <div class="glass-section">
+      <div class="glass-section-title">${g.group}</div>
+      <div class="inst-list">
+        ${g.items.map((item) => `
+          <button class="inst-row ${item.id === state.instrumentId ? 'active' : ''}" data-inst="${item.id}" type="button">
+            <span>${item.name}<span class="inst-sub">${item.tag}</span></span>
+            ${item.id === state.instrumentId ? '<span>✓</span>' : ''}
+          </button>
+        `).join('')}
+      </div>
     </div>
   `).join('');
 
@@ -297,23 +264,20 @@ function renderSettings() {
   });
 }
 
-function openSheet() {
-  backdrop.hidden = false;
-  sheet.classList.add('open');
-  sheet.setAttribute('aria-hidden', 'false');
+function openModal() {
+  glassModal.classList.add('open');
+  glassModal.setAttribute('aria-hidden', 'false');
 }
 
-function closeSheet() {
-  stopTone();
-  document.querySelectorAll('.tone-btn').forEach((b) => b.classList.remove('active'));
-  backdrop.hidden = true;
-  sheet.classList.remove('open');
-  sheet.setAttribute('aria-hidden', 'true');
+function closeModal() {
+  glassModal.classList.remove('open');
+  glassModal.setAttribute('aria-hidden', 'true');
 }
 
-document.getElementById('openSettingsBtn').addEventListener('click', openSheet);
-document.getElementById('closeSettingsBtn').addEventListener('click', closeSheet);
-backdrop.addEventListener('click', closeSheet);
+document.getElementById('openSettingsBtn').addEventListener('click', openModal);
+document.getElementById('topMetaBtn').addEventListener('click', openModal);
+document.getElementById('closeSettingsBtn').addEventListener('click', closeModal);
+glassBackdrop.addEventListener('click', closeModal);
 
 document.getElementById('a4Minus').addEventListener('click', () => {
   state.a4 = Math.max(410, Math.round((state.a4 - 0.5) * 10) / 10);
@@ -324,7 +288,7 @@ document.getElementById('a4Plus').addEventListener('click', () => {
   saveState(); renderSettings();
 });
 
-document.querySelectorAll('.chip').forEach((c) => c.addEventListener('click', () => {
+document.querySelectorAll('.lens-chip').forEach((c) => c.addEventListener('click', () => {
   state.a4 = Number(c.dataset.a4);
   saveState(); renderSettings();
 }));
@@ -339,13 +303,8 @@ document.querySelectorAll('[data-acc]').forEach((b) => b.addEventListener('click
   saveState(); renderSettings();
 }));
 
-document.querySelectorAll('.tone-btn').forEach((b) => b.addEventListener('click', () => {
-  toggleTone(Number(b.dataset.midi), b);
-}));
-
 renderSettings();
 
-// Регистрация офлайн PWA Service Worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js');
 }
