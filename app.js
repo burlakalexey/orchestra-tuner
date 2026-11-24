@@ -53,6 +53,7 @@ const state = {
   accidentals: saved.accidentals || 'auto',
   isInTune: false,
   smoothedMidi: null,
+  recentMidis: [],
   lastActiveTime: 0
 };
 
@@ -65,7 +66,6 @@ function saveState() {
   }));
 }
 
-// DOM
 const stage = document.getElementById('stage');
 const bgCurve = document.getElementById('bgCurve');
 const themeMeta = document.getElementById('themeColorMeta');
@@ -84,7 +84,6 @@ const glassBackdrop = document.getElementById('glassBackdrop');
 const a4ValueEl = document.getElementById('a4Value');
 const groupsContainer = document.getElementById('instrumentGroups');
 
-// Создаём 21 точку шкалы (-50 .. 0 .. +50 с шагом 5 центов)
 for (let i = 0; i <= 20; i++) {
   const dot = document.createElement('span');
   dot.className = 'scale-dot';
@@ -140,9 +139,19 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
+function getMedianMidi(val) {
+  state.recentMidis.push(val);
+  if (state.recentMidis.length > 3) state.recentMidis.shift();
+  const sorted = [...state.recentMidis].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+}
+
 function handleFrequency(freq) {
   const now = performance.now();
   if (!freq) {
+    if (now - state.lastActiveTime > 150) {
+      state.recentMidis = [];
+    }
     if (now - state.lastActiveTime > 650) setIdle();
     return;
   }
@@ -152,16 +161,20 @@ function handleFrequency(freq) {
   const concertMidi = 69 + 12 * Math.log2(freq / state.a4);
   const writtenMidi = concertMidi + inst.transpose;
 
-  if (state.smoothedMidi === null || Math.abs(writtenMidi - state.smoothedMidi) > 0.8) {
-    state.smoothedMidi = writtenMidi;
+  // Медианный фильтр по 3 кадрам убирает выбросы при атаке ноты
+  const stableMidi = getMedianMidi(writtenMidi);
+
+  // Мгновенное переключение при переходе на другой полутон (> 0.45)
+  if (state.smoothedMidi === null || Math.abs(stableMidi - state.smoothedMidi) > 0.45) {
+    state.smoothedMidi = stableMidi;
+    state.isInTune = false;
   } else {
-    state.smoothedMidi = state.smoothedMidi * 0.65 + writtenMidi * 0.35;
+    state.smoothedMidi = state.smoothedMidi * 0.6 + stableMidi * 0.4;
   }
 
   const nearestMidi = Math.round(state.smoothedMidi);
   const cents = (state.smoothedMidi - nearestMidi) * 100;
 
-  // Гистерезис для стабильного зелёного экрана
   const enterTol = state.tolerance;
   const exitTol = state.tolerance * 1.45;
   if (!state.isInTune && Math.abs(cents) <= enterTol) {
@@ -177,6 +190,7 @@ function handleFrequency(freq) {
 function setIdle() {
   state.isInTune = false;
   state.smoothedMidi = null;
+  state.recentMidis = [];
   stage.className = 'stage state-idle';
   themeMeta.setAttribute('content', '#e5e5ea');
   noteNameEl.textContent = '—';
@@ -214,14 +228,12 @@ function renderPitch(midi, cents) {
   } else {
     stage.classList.remove('in-tune');
     themeMeta.setAttribute('content', '#e5e5ea');
-    // Дуга и подсказка показывают сторону отклонения
     const shiftVw = (clamped / 50) * 18;
     bgCurve.style.transform = `translateX(${shiftVw}vw)`;
     directionCue.textContent = cents < 0 ? '← Ниже' : 'Выше →';
   }
 }
 
-// Рендер Liquid Glass настроек
 function renderSettings() {
   const inst = getInstrument();
   const a4Str = state.a4.toFixed(1).replace('.0', '');
@@ -306,5 +318,8 @@ document.querySelectorAll('[data-acc]').forEach((b) => b.addEventListener('click
 renderSettings();
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js');
+  navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' });
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    window.location.reload();
+  });
 }
