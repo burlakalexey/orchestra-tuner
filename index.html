@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="theme-color" content="#000000" />
+  <meta id="themeColorMeta" name="theme-color" content="#e5e5ea" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Тюнер" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
@@ -15,26 +15,26 @@
 </head>
 <body>
   <main id="stage" class="stage state-idle">
-    <!-- Стартовый экран (требуется тап для запуска AudioContext на iOS/Android) -->
+    <!-- Фирменная плавная дуга фона (реагирует на отклонение) -->
+    <div id="bgCurve" class="bg-curve" aria-hidden="true"></div>
+
+    <!-- Стартовый экран (светлый Apple стиль) -->
     <button id="startOverlay" class="start-overlay" type="button">
-      <div class="mic-ring">
+      <div class="glass-circle start-mic-circle">
         <svg viewBox="0 0 24 24" class="mic-icon" aria-hidden="true">
           <path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a1 1 0 1 1 2 0 7 7 0 0 1-6 6.93V20h3a1 1 0 1 1 0 2H8a1 1 0 1 1 0-2h3v-2.07A7 7 0 0 1 5 11a1 1 0 1 1 2 0 5 5 0 0 0 10 0Z"/>
         </svg>
       </div>
-      <span class="start-label">Нажмите, чтобы начать</span>
+      <span class="start-label">Нажмите, чтобы включить микрофон</span>
     </button>
 
-    <!-- Центральная область тюнера (минимум визуального шума) -->
-    <section class="tuner-core" aria-live="polite">
-      <!-- Стрелка сверху (указывает вниз, когда звук ВЫСИТ) -->
-      <div id="arrowDown" class="arrow arrow-top" aria-hidden="true">
-        <svg viewBox="0 0 48 48">
-          <path d="M24 8v28M12 25l12 12 12-12" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
+    <!-- Верхняя строка: эталон и выбранный инструмент -->
+    <button id="topMetaBtn" class="top-meta" type="button">
+      <span id="topMetaLabel">442 Hz</span>
+    </button>
 
-      <!-- Нота + знак альтерации + цифра октавы -->
+    <!-- Центральная зона: нота + шкала -50..0..+50 -->
+    <section class="tuner-core" aria-live="polite">
       <div class="note-display">
         <span id="noteName" class="note-letter">—</span>
         <span class="note-modifiers">
@@ -43,78 +43,95 @@
         </span>
       </div>
 
-      <!-- Стрелка снизу (указывает вверх, когда звук НИЗИТ) -->
-      <div id="arrowUp" class="arrow arrow-bottom" aria-hidden="true">
-        <svg viewBox="0 0 48 48">
-          <path d="M24 40V12M12 23l12-12 12 12" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+      <!-- Подсказка направления (Ниже / Выше / В ноте) -->
+      <div id="directionCue" class="direction-cue"></div>
+
+      <!-- Точечная шкала -50 .. -25 .. 0 .. 25 .. 50 -->
+      <div class="scale-wrap" aria-hidden="true">
+        <div id="dotTrack" class="dot-track">
+          <div id="pitchMarker" class="pitch-marker"></div>
+        </div>
+        <div class="scale-labels">
+          <span style="left: 0%">-50</span>
+          <span style="left: 25%">-25</span>
+          <span style="left: 75%">25</span>
+          <span style="left: 100%">50</span>
+        </div>
       </div>
     </section>
 
-    <!-- Нижняя капсула в стиле Apple Frosted Glass -->
-    <button id="openSettingsBtn" class="pill-btn" type="button">
-      <span id="pillLabel">Хроматический · 442 Гц</span>
+    <!-- Кнопка настроек в стиле Liquid Glass (без камертона) -->
+    <button id="openSettingsBtn" class="glass-btn settings-trigger" type="button" aria-label="Настройки">
+      <svg viewBox="0 0 24 24" class="sliders-icon" aria-hidden="true">
+        <line x1="4" y1="8" x2="20" y2="8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="9" cy="8" r="2.3" fill="currentColor"/>
+        <line x1="4" y1="16" x2="20" y2="16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="15" cy="16" r="2.3" fill="currentColor"/>
+      </svg>
     </button>
   </main>
 
-  <!-- iOS-шторка настроек -->
-  <div id="sheetBackdrop" class="sheet-backdrop" hidden></div>
-  <aside id="settingsSheet" class="sheet" aria-hidden="true">
-    <div class="sheet-handle"></div>
-    <header class="sheet-header">
-      <h2>Настройки</h2>
-      <button id="closeSettingsBtn" class="sheet-done" type="button">Готово</button>
-    </header>
+  <!-- Настройки в стиле Apple Liquid Glass -->
+  <div id="glassModal" class="glass-modal" aria-hidden="true">
+    <div id="glassBackdrop" class="glass-backdrop"></div>
 
-    <div class="sheet-content">
-      <!-- Камертон (эталонный звук) -->
-      <div class="group-title">Камертон</div>
-      <div class="card tone-card">
-        <button class="tone-btn" data-midi="69" type="button">A₄</button>
-        <button class="tone-btn" data-midi="70" type="button">B♭₄</button>
-        <button class="tone-btn" data-midi="60" type="button">C₄</button>
-        <button class="tone-btn" data-midi="65" type="button">F₄</button>
+    <div class="glass-layout">
+      <!-- Верхняя панель с кнопкой закрытия (как ✕ на скрине) -->
+      <div class="glass-topbar">
+        <button id="closeSettingsBtn" class="glass-circle close-glass-btn" type="button" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </button>
       </div>
 
-      <!-- Строй оркестра (A4) -->
-      <div class="group-title">Эталон A₄</div>
-      <div class="card">
-        <div class="row">
-          <span>Частота</span>
-          <div class="stepper">
-            <button id="a4Minus" type="button" aria-label="Уменьшить">−</button>
-            <span id="a4Value" class="stepper-val">442.0 Гц</span>
-            <button id="a4Plus" type="button" aria-label="Увеличить">+</button>
+      <!-- Главная капсула Liquid Glass -->
+      <aside class="liquid-glass-panel">
+        <div class="glass-scroll">
+          <!-- Калибровка частоты A4 -->
+          <div class="glass-section">
+            <div class="glass-section-title">Частота A₄</div>
+            <div class="glass-box">
+              <div class="freq-stepper">
+                <button id="a4Minus" class="glass-pill-btn" type="button">−</button>
+                <span id="a4Value" class="freq-value">442.0 Hz</span>
+                <button id="a4Plus" class="glass-pill-btn" type="button">+</button>
+              </div>
+              <div class="freq-presets">
+                <button class="lens-chip" data-a4="415" type="button">415</button>
+                <button class="lens-chip" data-a4="440" type="button">440</button>
+                <button class="lens-chip" data-a4="442" type="button">442</button>
+                <button class="lens-chip" data-a4="443" type="button">443</button>
+              </div>
+            </div>
           </div>
+
+          <!-- Допуск зелёного экрана -->
+          <div class="glass-section">
+            <div class="glass-section-title">Допуск зелёного экрана</div>
+            <div class="glass-segmented">
+              <button class="lens-seg" data-tol="4" type="button">Сцена</button>
+              <button class="lens-seg" data-tol="2" type="button">Оркестр</button>
+              <button class="lens-seg" data-tol="1" type="button">Студия</button>
+            </div>
+          </div>
+
+          <!-- Отображение знаков -->
+          <div class="glass-section">
+            <div class="glass-section-title">Знаки альтерации</div>
+            <div class="glass-segmented">
+              <button class="lens-seg" data-acc="auto" type="button">Авто</button>
+              <button class="lens-seg" data-acc="flat" type="button">Бемоли ♭</button>
+              <button class="lens-seg" data-acc="sharp" type="button">Диезы ♯</button>
+            </div>
+          </div>
+
+          <!-- Оркестровые инструменты по группам -->
+          <div id="instrumentGroups"></div>
         </div>
-        <div class="row presets-row">
-          <button class="chip" data-a4="415" type="button">415</button>
-          <button class="chip" data-a4="440" type="button">440</button>
-          <button class="chip" data-a4="442" type="button">442</button>
-          <button class="chip" data-a4="443" type="button">443</button>
-        </div>
-      </div>
-
-      <!-- Точность зелёного экрана -->
-      <div class="group-title">Допуск зелёного экрана</div>
-      <div class="card segmented-card">
-        <button class="seg-btn" data-tol="4" type="button">Сцена</button>
-        <button class="seg-btn" data-tol="2" type="button">Оркестр</button>
-        <button class="seg-btn" data-tol="1" type="button">Студия</button>
-      </div>
-
-      <!-- Знаки альтерации -->
-      <div class="group-title">Отображение знаков</div>
-      <div class="card segmented-card">
-        <button class="seg-btn" data-acc="auto" type="button">Авто</button>
-        <button class="seg-btn" data-acc="flat" type="button">Бемоли (♭)</button>
-        <button class="seg-btn" data-acc="sharp" type="button">Диезы (♯)</button>
-      </div>
-
-      <!-- Группы оркестровых инструментов -->
-      <div id="instrumentGroups"></div>
+      </aside>
     </div>
-  </aside>
+  </div>
 
   <script type="module" src="./app.js"></script>
 </body>
