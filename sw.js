@@ -1,4 +1,4 @@
-const CACHE_NAME = 'orchestra-tuner-v6';
+const CACHE_NAME = 'orchestra-tuner-v7';
 const ASSETS = [
   './',
   './index.html',
