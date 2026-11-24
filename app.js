@@ -54,7 +54,9 @@ const state = {
   isInTune: false,
   smoothedMidi: null,
   recentMidis: [],
-  lastActiveTime: 0
+  lastActiveTime: 0,
+  targetCents: 0,
+  displayCents: 0
 };
 
 function saveState() {
@@ -67,7 +69,7 @@ function saveState() {
 }
 
 const stage = document.getElementById('stage');
-const bgCurve = document.getElementById('bgCurve');
+const bgCurvePath = document.getElementById('bgCurvePath');
 const themeMeta = document.getElementById('themeColorMeta');
 const startOverlay = document.getElementById('startOverlay');
 const topMetaLabel = document.getElementById('topMetaLabel');
@@ -92,6 +94,22 @@ for (let i = 0; i <= 20; i++) {
   dot.style.left = `${(i / 20) * 100}%`;
   dotTrack.appendChild(dot);
 }
+
+// Плавная анимация дуги в обе стороны (60/120 FPS)
+function animateCurve() {
+  state.displayCents += (state.targetCents - state.displayCents) * 0.22;
+  if (Math.abs(state.displayCents) < 0.05 && state.targetCents === 0) {
+    state.displayCents = 0;
+  }
+
+  const ratio = Math.max(-1, Math.min(1, state.displayCents / 50));
+  const xEdge = (50 + ratio * 7).toFixed(2);
+  const cx = (50 + ratio * 42).toFixed(2);
+  bgCurvePath.setAttribute('d', `M ${xEdge} 0 Q ${cx} 50 ${xEdge} 100 L 100 100 L 100 0 Z`);
+
+  requestAnimationFrame(animateCurve);
+}
+requestAnimationFrame(animateCurve);
 
 let audioCtx = null;
 
@@ -149,9 +167,7 @@ function getMedianMidi(val) {
 function handleFrequency(freq) {
   const now = performance.now();
   if (!freq) {
-    if (now - state.lastActiveTime > 150) {
-      state.recentMidis = [];
-    }
+    if (now - state.lastActiveTime > 150) state.recentMidis = [];
     if (now - state.lastActiveTime > 650) setIdle();
     return;
   }
@@ -160,11 +176,8 @@ function handleFrequency(freq) {
   const inst = getInstrument();
   const concertMidi = 69 + 12 * Math.log2(freq / state.a4);
   const writtenMidi = concertMidi + inst.transpose;
-
-  // Медианный фильтр по 3 кадрам убирает выбросы при атаке ноты
   const stableMidi = getMedianMidi(writtenMidi);
 
-  // Мгновенное переключение при переходе на другой полутон (> 0.45)
   if (state.smoothedMidi === null || Math.abs(stableMidi - state.smoothedMidi) > 0.45) {
     state.smoothedMidi = stableMidi;
     state.isInTune = false;
@@ -191,6 +204,7 @@ function setIdle() {
   state.isInTune = false;
   state.smoothedMidi = null;
   state.recentMidis = [];
+  state.targetCents = 0;
   stage.className = 'stage state-idle';
   themeMeta.setAttribute('content', '#e5e5ea');
   noteNameEl.textContent = '—';
@@ -198,7 +212,6 @@ function setIdle() {
   noteOctEl.textContent = '';
   directionCue.textContent = '';
   pitchMarker.classList.remove('active');
-  bgCurve.style.transform = 'translateX(0)';
 }
 
 function renderPitch(midi, cents) {
@@ -225,12 +238,12 @@ function renderPitch(midi, cents) {
     stage.classList.add('in-tune');
     themeMeta.setAttribute('content', '#30d158');
     directionCue.textContent = 'В ноте';
+    state.targetCents = 0;
   } else {
     stage.classList.remove('in-tune');
     themeMeta.setAttribute('content', '#e5e5ea');
-    const shiftVw = (clamped / 50) * 18;
-    bgCurve.style.transform = `translateX(${shiftVw}vw)`;
     directionCue.textContent = cents < 0 ? '← Ниже' : 'Выше →';
+    state.targetCents = clamped;
   }
 }
 
@@ -243,7 +256,7 @@ function renderSettings() {
 
   a4ValueEl.textContent = `${state.a4.toFixed(1)} Hz`;
 
-  document.querySelectorAll('.lens-chip').forEach((c) => {
+  document.querySelectorAll('.m-chip').forEach((c) => {
     c.classList.toggle('active', Number(c.dataset.a4) === state.a4);
   });
   document.querySelectorAll('[data-tol]').forEach((b) => {
@@ -260,7 +273,7 @@ function renderSettings() {
         ${g.items.map((item) => `
           <button class="inst-row ${item.id === state.instrumentId ? 'active' : ''}" data-inst="${item.id}" type="button">
             <span>${item.name}<span class="inst-sub">${item.tag}</span></span>
-            ${item.id === state.instrumentId ? '<span>✓</span>' : ''}
+            <span class="m-radio" aria-hidden="true"></span>
           </button>
         `).join('')}
       </div>
@@ -300,7 +313,7 @@ document.getElementById('a4Plus').addEventListener('click', () => {
   saveState(); renderSettings();
 });
 
-document.querySelectorAll('.lens-chip').forEach((c) => c.addEventListener('click', () => {
+document.querySelectorAll('.m-chip').forEach((c) => c.addEventListener('click', () => {
   state.a4 = Number(c.dataset.a4);
   saveState(); renderSettings();
 }));
