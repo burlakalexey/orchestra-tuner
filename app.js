@@ -45,11 +45,19 @@ const NOTES_FLAT = [
   ['G', '♭'], ['G', ''], ['A', '♭'], ['A', ''], ['B', '♭'], ['B', '']
 ];
 
-const saved = JSON.parse(localStorage.getItem('orchestra_tuner_v2') || '{}');
+function loadSavedState() {
+  try {
+    return JSON.parse(localStorage.getItem('orchestra_tuner_v2') || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+const saved = loadSavedState();
 const state = {
   instrumentId: saved.instrumentId || 'chromatic',
-  a4: saved.a4 || 442,
-  tolerance: saved.tolerance || 2,
+  a4: Number(saved.a4) || 442,
+  tolerance: Number(saved.tolerance) || 2,
   accidentals: saved.accidentals || 'auto',
   isInTune: false,
   smoothedMidi: null,
@@ -60,12 +68,14 @@ const state = {
 };
 
 function saveState() {
-  localStorage.setItem('orchestra_tuner_v2', JSON.stringify({
-    instrumentId: state.instrumentId,
-    a4: state.a4,
-    tolerance: state.tolerance,
-    accidentals: state.accidentals
-  }));
+  try {
+    localStorage.setItem('orchestra_tuner_v2', JSON.stringify({
+      instrumentId: state.instrumentId,
+      a4: state.a4,
+      tolerance: state.tolerance,
+      accidentals: state.accidentals
+    }));
+  } catch {}
 }
 
 const stage = document.getElementById('stage');
@@ -77,22 +87,12 @@ const topMetaLabel = document.getElementById('topMetaLabel');
 const noteNameEl = document.getElementById('noteName');
 const noteAccEl = document.getElementById('noteAccidental');
 const noteOctEl = document.getElementById('noteOctave');
-const dotTrack = document.getElementById('dotTrack');
 const pitchMarker = document.getElementById('pitchMarker');
 
 const glassModal = document.getElementById('glassModal');
 const glassBackdrop = document.getElementById('glassBackdrop');
 const a4ValueEl = document.getElementById('a4Value');
 const groupsContainer = document.getElementById('instrumentGroups');
-
-for (let i = 0; i <= 20; i++) {
-  const dot = document.createElement('span');
-  dot.className = 'scale-dot';
-  if (i === 10) dot.classList.add('center');
-  else if (i === 0 || i === 5 || i === 15 || i === 20) dot.classList.add('major');
-  dot.style.left = `${(i / 20) * 100}%`;
-  dotTrack.appendChild(dot);
-}
 
 function setSystemBg(color) {
   themeMeta.setAttribute('content', color);
@@ -144,8 +144,8 @@ startOverlay.addEventListener('click', async () => {
 
     startOverlay.hidden = true;
     requestWakeLock();
-  } catch {
-    alert('Нужен доступ к микрофону для работы тюнера.');
+  } catch (err) {
+    alert('Не удалось включить микрофон: ' + (err?.message || 'проверьте разрешения.'));
   }
 });
 
