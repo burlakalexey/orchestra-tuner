@@ -36,7 +36,7 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: calc(env(safe-area-inset-top) + 22px) 24px calc(env(safe-area-inset-bottom) + 34px);
+  padding: calc(env(safe-area-inset-top) + 22px) 20px calc(env(safe-area-inset-bottom) + 34px);
   background-color: var(--bg-light);
   transition: background-color 0.2s cubic-bezier(0.22, 1, 0.36, 1), color 0.2s ease;
 }
@@ -64,15 +64,23 @@ html, body {
   fill: rgba(255, 255, 255, 0.12);
 }
 
+/* Стартовый экран (исправлено для iOS Safari button) */
 .start-overlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  width: 100%;
+  height: 100vh;
   z-index: 25;
+  margin: 0;
+  padding: 24px;
   border: none;
-  background: rgba(229, 229, 234, 0.92);
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(229, 229, 234, 0.94);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   color: var(--ink-dark);
+  font-family: inherit;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -86,18 +94,23 @@ html, body {
 }
 
 .start-mic-circle {
-  width: 82px;
-  height: 82px;
-  background: rgba(255, 255, 255, 0.72);
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.8);
   box-shadow:
-    inset 0 1.5px 1px rgba(255, 255, 255, 0.95),
-    0 12px 32px rgba(0, 0, 0, 0.08);
+    inset 0 1.5px 1px rgba(255, 255, 255, 1),
+    0 12px 32px rgba(0, 0, 0, 0.09);
+  display: grid;
+  place-items: center;
+  color: var(--ink-dark);
 }
 
 .mic-icon {
-  width: 32px;
-  height: 32px;
-  fill: var(--ink-dark);
+  width: 34px;
+  height: 34px;
+  display: block;
 }
 
 .start-label {
@@ -110,6 +123,8 @@ html, body {
   position: relative;
   z-index: 2;
   border: none;
+  appearance: none;
+  -webkit-appearance: none;
   background: none;
   padding: 6px 14px;
   border-radius: 999px;
@@ -184,17 +199,16 @@ html, body {
   opacity: 0.92;
 }
 
+/* Точечная шкала */
 .scale-wrap {
   width: 100%;
-  padding: 6px 10px 0;
+  padding: 6px 16px 0;
 }
 
 .dot-track {
   position: relative;
   width: 100%;
   height: 24px;
-  display: flex;
-  align-items: center;
 }
 
 .scale-dot {
@@ -205,18 +219,19 @@ html, body {
   border-radius: 50%;
   background: rgba(28, 28, 30, 0.28);
   transform: translate(-50%, -50%);
+  pointer-events: none;
 }
 
 .scale-dot.major {
-  width: 5.5px;
-  height: 5.5px;
-  background: rgba(28, 28, 30, 0.42);
+  width: 6px;
+  height: 6px;
+  background: rgba(28, 28, 30, 0.44);
 }
 
 .scale-dot.center {
   width: 10px;
   height: 10px;
-  background: rgba(28, 28, 30, 0.48);
+  background: rgba(28, 28, 30, 0.5);
 }
 
 .stage.in-tune .scale-dot {
@@ -279,8 +294,11 @@ html, body {
   z-index: 2;
   width: 58px;
   height: 58px;
+  padding: 0;
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.09);
+  appearance: none;
+  -webkit-appearance: none;
   background: rgba(255, 255, 255, 0.86);
   backdrop-filter: blur(24px) saturate(170%);
   -webkit-backdrop-filter: blur(24px) saturate(170%);
@@ -310,6 +328,7 @@ html, body {
 .sliders-icon {
   width: 26px;
   height: 26px;
+  display: block;
 }
 
 /* ===================================================
@@ -375,6 +394,9 @@ html, body {
 .close-glass-btn {
   width: 44px;
   height: 44px;
+  padding: 0;
+  appearance: none;
+  -webkit-appearance: none;
   background: rgba(248, 248, 251, 0.86);
   backdrop-filter: blur(32px) saturate(180%);
   -webkit-backdrop-filter: blur(32px) saturate(180%);
