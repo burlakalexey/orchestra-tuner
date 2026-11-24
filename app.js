@@ -95,7 +95,12 @@ for (let i = 0; i <= 20; i++) {
   dotTrack.appendChild(dot);
 }
 
-// Плавная анимация дуги в обе стороны (60/120 FPS)
+function setSystemBg(color) {
+  themeMeta.setAttribute('content', color);
+  document.documentElement.style.backgroundColor = color;
+  document.body.style.backgroundColor = color;
+}
+
 function animateCurve() {
   state.displayCents += (state.targetCents - state.displayCents) * 0.22;
   if (Math.abs(state.displayCents) < 0.05 && state.targetCents === 0) {
@@ -206,7 +211,7 @@ function setIdle() {
   state.recentMidis = [];
   state.targetCents = 0;
   stage.className = 'stage state-idle';
-  themeMeta.setAttribute('content', '#e5e5ea');
+  setSystemBg('#e5e5ea');
   noteNameEl.textContent = '—';
   noteAccEl.textContent = '';
   noteOctEl.textContent = '';
@@ -236,12 +241,12 @@ function renderPitch(midi, cents) {
 
   if (state.isInTune) {
     stage.classList.add('in-tune');
-    themeMeta.setAttribute('content', '#30d158');
+    setSystemBg('#30d158');
     directionCue.textContent = 'В ноте';
     state.targetCents = 0;
   } else {
     stage.classList.remove('in-tune');
-    themeMeta.setAttribute('content', '#e5e5ea');
+    setSystemBg('#e5e5ea');
     directionCue.textContent = cents < 0 ? '← Ниже' : 'Выше →';
     state.targetCents = clamped;
   }
