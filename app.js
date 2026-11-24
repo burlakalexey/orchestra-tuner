@@ -77,7 +77,6 @@ const topMetaLabel = document.getElementById('topMetaLabel');
 const noteNameEl = document.getElementById('noteName');
 const noteAccEl = document.getElementById('noteAccidental');
 const noteOctEl = document.getElementById('noteOctave');
-const directionCue = document.getElementById('directionCue');
 const dotTrack = document.getElementById('dotTrack');
 const pitchMarker = document.getElementById('pitchMarker');
 
@@ -215,7 +214,6 @@ function setIdle() {
   noteNameEl.textContent = '—';
   noteAccEl.textContent = '';
   noteOctEl.textContent = '';
-  directionCue.textContent = '';
   pitchMarker.classList.remove('active');
 }
 
@@ -242,12 +240,10 @@ function renderPitch(midi, cents) {
   if (state.isInTune) {
     stage.classList.add('in-tune');
     setSystemBg('#30d158');
-    directionCue.textContent = 'В ноте';
     state.targetCents = 0;
   } else {
     stage.classList.remove('in-tune');
     setSystemBg('#e5e5ea');
-    directionCue.textContent = cents < 0 ? '← Ниже' : 'Выше →';
     state.targetCents = clamped;
   }
 }
